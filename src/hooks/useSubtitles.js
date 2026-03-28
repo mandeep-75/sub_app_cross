@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 
@@ -6,6 +6,15 @@ export function useSubtitles() {
   const [subtitles, setSubtitles] = useState([])
   const [selectedSubtitle, setSelectedSubtitle] = useState(null)
   const [currentTime, setCurrentTime] = useState(0)
+
+  useEffect(() => {
+    if (selectedSubtitle) {
+      const updated = subtitles.find(s => s.id === selectedSubtitle.id)
+      if (updated && updated !== selectedSubtitle) {
+        setSelectedSubtitle(updated)
+      }
+    }
+  }, [subtitles, selectedSubtitle])
 
   const importSubtitles = useCallback(async (filePath) => {
     try {
@@ -21,6 +30,12 @@ export function useSubtitles() {
     setSubtitles(prev => prev.map(sub => 
       sub.id === id ? { ...sub, ...updates } : sub
     ))
+    setSelectedSubtitle(current => {
+      if (current?.id === id) {
+        return { ...current, ...updates }
+      }
+      return current
+    })
   }, [])
 
   const addSubtitle = useCallback(() => {
