@@ -70,9 +70,37 @@ jobs:
           mkdir -p bundle/macos
           APP_NAME="SubtitleBurner"
           mkdir -p "bundle/macos/${APP_NAME}.app/Contents/MacOS"
+          mkdir -p "bundle/macos/${APP_NAME}.app/Contents/Resources"
+          
           cp "src-tauri/target/${{ matrix.target }}/release/subtitle-burner" "bundle/macos/${APP_NAME}.app/Contents/MacOS/"
+          
+          cat > "bundle/macos/${APP_NAME}.app/Contents/Info.plist" << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>subtitle-burner</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.subtitleburner.app</string>
+            <key>CFBundleName</key>
+            <string>SubtitleBurner</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.13</string>
+          </dict>
+          </plist>
+          EOF
+          
           cd bundle/macos
           tar -czf "../../../SubtitleBurner_macos_${{ matrix.target }}.tar.gz" "${APP_NAME}.app"
+          
+          hdiutil create -volname SubtitleBurner -srcfolder "${APP_NAME}.app" -ov -format UDZO -fs HFS+ "../../../SubtitleBurner_macos_${{ matrix.target }}.dmg" || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -86,7 +114,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SubtitleBurner_macos_${{ matrix.target }}
-          path: SubtitleBurner_macos_${{ matrix.target }}.tar.gz
+          path: |
+            SubtitleBurner_macos_${{ matrix.target }}.tar.gz
+            SubtitleBurner_macos_${{ matrix.target }}.dmg
           retention-days: 5
 
   # =============================================================================
@@ -203,34 +233,34 @@ jobs:
       contents: write
 
     steps:
-      - name: Download all artifacts
+      - name: Download binaries
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          path: artifacts/binaries
           pattern: subtitle-burner-*
+
+      - name: Download macOS bundles
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/bundles
+          pattern: SubtitleBurner_macos_*
 
       - name: Prepare release assets
         run: |
-          cd artifacts
-          mv subtitle-burner-aarch64-apple-darwin/subtitle-burner SubtitleBurner_macos_arm64
-          mv subtitle-burner-x86_64-apple-darwin/subtitle-burner SubtitleBurner_macos_x86_64
-          mv subtitle-burner-x86_64-pc-windows-gnu/subtitle-burner.exe SubtitleBurner_windows_x86_64.exe
-          mv subtitle-burner-x86_64-unknown-linux-gnu/subtitle-burner SubtitleBurner_linux_x86_64
+          cd artifacts/binaries
+          mv subtitle-burner-aarch64-apple-darwin/subtitle-burner ../SubtitleBurner_macos_arm64_bin
+          mv subtitle-burner-x86_64-apple-darwin/subtitle-burner ../SubtitleBurner_macos_x86_64_bin
+          mv subtitle-burner-x86_64-pc-windows-gnu/subtitle-burner.exe ../SubtitleBurner_windows_x86_64.exe
+          mv subtitle-burner-x86_64-unknown-linux-gnu/subtitle-burner ../SubtitleBurner_linux_x86_64
           rm -rf subtitle-burner-*/
-
-      - name: Generate macOS DMG
-        continue-on-error: true
-        run: |
-          cd artifacts
-          hdiutil create -volname SubtitleBurner -srcfolder SubtitleBurner_macos_arm64 -ov -format UDZO SubtitleBurner_macos_arm64.dmg || true
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/SubtitleBurner_macos_*
-            artifacts/SubtitleBurner_windows_*
-            artifacts/SubtitleBurner_linux_*
+            artifacts/binaries/SubtitleBurner_*
+            artifacts/bundles/SubtitleBurner_macos_*
           generate_release_notes: true
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') }}
         env:
