@@ -68,10 +68,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
         run: |
           mkdir -p bundle/macos
-          # Create a simple .app structure or zip the binary
           APP_NAME="SubtitleBurner"
           mkdir -p "bundle/macos/${APP_NAME}.app/Contents/MacOS"
-          cp "target/${{ matrix.target }}/release/subtitle-burner" "bundle/macos/${APP_NAME}.app/Contents/MacOS/"
+          cp "src-tauri/target/${{ matrix.target }}/release/subtitle-burner" "bundle/macos/${APP_NAME}.app/Contents/MacOS/"
           cd bundle/macos
           tar -czf "../../../SubtitleBurner_macos_${{ matrix.target }}.tar.gz" "${APP_NAME}.app"
 
