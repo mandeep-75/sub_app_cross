@@ -33,6 +33,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Debug - List workspace contents
+        run: |
+          echo "=== GITHUB_WORKSPACE: $GITHUB_WORKSPACE ==="
+          echo "=== Current directory: $(pwd) ==="
+          echo "=== Listing all files ==="
+          ls -la
+          echo "=== Listing src-tauri if exists ==="
+          ls -la src-tauri/ 2>/dev/null || echo "src-tauri NOT FOUND"
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -141,6 +152,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Debug - List workspace contents
+        run: |
+          echo "=== GITHUB_WORKSPACE: $GITHUB_WORKSPACE ==="
+          echo "=== Current directory: $(pwd) ==="
+          echo "=== Listing all files ==="
+          ls -la
+          echo "=== Listing src-tauri if exists ==="
+          ls -la src-tauri/ 2>/dev/null || echo "src-tauri NOT FOUND"
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -191,6 +213,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Debug - List workspace contents
+        run: |
+          echo "=== GITHUB_WORKSPACE: $GITHUB_WORKSPACE ==="
+          echo "=== Current directory: $(pwd) ==="
+          echo "=== Listing all files ==="
+          ls -la
+          echo "=== Listing src-tauri if exists ==="
+          ls -la src-tauri/ 2>/dev/null || echo "src-tauri NOT FOUND"
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
