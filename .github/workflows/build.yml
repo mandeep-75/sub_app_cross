@@ -3,40 +3,101 @@ name: Build
 on:
   push:
     branches:
+      - main
       - release/*
     tags:
       - 'v*'
   workflow_dispatch:
 
+# Cancel in-progress runs for the same branch/tag to save resources
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Enable sparse checkout for faster cloning if needed
+  RUST_BACKTRACE: 1
+
 jobs:
+  # =============================================================================
+  # Build macOS (arm64 + x86_64) - native build on macOS runners
+  # =============================================================================
   build-macos:
     runs-on: macos-latest
     strategy:
+      fail-fast: false
       matrix:
         target: [aarch64-apple-darwin, x86_64-apple-darwin]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+          key: cargo-registry-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-${{ runner.os }}-
+
+      - name: Cache cargo build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-build-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-build-${{ runner.os }}-${{ matrix.target }}-
+
       - name: Build
         working-directory: src-tauri
         run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Create macOS app bundle
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p bundle/macos
+          # Create a simple .app structure or zip the binary
+          APP_NAME="SubtitleBurner"
+          mkdir -p "bundle/macos/${APP_NAME}.app/Contents/MacOS"
+          cp "target/${{ matrix.target }}/release/subtitle-burner" "bundle/macos/${APP_NAME}.app/Contents/MacOS/"
+          cd bundle/macos
+          tar -czf "../../../SubtitleBurner_macos_${{ matrix.target }}.tar.gz" "${APP_NAME}.app"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: subtitle-burner-${{ matrix.target }}
           path: src-tauri/target/${{ matrix.target }}/release/subtitle-burner
+          retention-days: 5
 
+      - name: Upload macOS bundle
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SubtitleBurner_macos_${{ matrix.target }}
+          path: SubtitleBurner_macos_${{ matrix.target }}.tar.gz
+          retention-days: 5
+
+  # =============================================================================
+  # Build Windows (x86_64) - cross-compile from macOS
+  # =============================================================================
   build-windows:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -45,6 +106,27 @@ jobs:
 
       - name: Install mingw-w64
         run: brew install mingw-w64
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+          key: cargo-registry-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-${{ runner.os }}-
+
+      - name: Cache cargo build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-build-${{ runner.os }}-x86_64-pc-windows-gnu-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-build-${{ runner.os }}-x86_64-pc-windows-gnu-
 
       - name: Build
         working-directory: src-tauri
@@ -55,23 +137,118 @@ jobs:
         with:
           name: subtitle-burner-x86_64-pc-windows-gnu
           path: src-tauri/target/x86_64-pc-windows-gnu/release/subtitle-burner.exe
+          retention-days: 5
 
+  # =============================================================================
+  # Build Linux (x86_64) - for completeness
+  # =============================================================================
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+          key: cargo-registry-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-${{ runner.os }}-
+
+      - name: Cache cargo build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-build-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-build-${{ runner.os }}-
+
+      - name: Build
+        working-directory: src-tauri
+        run: cargo build --release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: subtitle-burner-x86_64-unknown-linux-gnu
+          path: src-tauri/target/release/subtitle-burner
+          retention-days: 5
+
+  # =============================================================================
+  # Create GitHub Release (only on tags)
+  # =============================================================================
   release:
-    needs: [build-macos, build-windows]
+    needs: [build-macos, build-windows, build-linux]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: subtitle-burner-*
+          merge-multiple: true
+
+      - name: Prepare release assets
+        run: |
+          cd artifacts
+          # Rename artifacts for cleaner release names
+          mv subtitle-burner-aarch64-apple-darwin SubtitleBurner_macos_arm64
+          mv subtitle-burner-x86_64-apple-darwin SubtitleBurner_macos_x86_64
+          mv subtitle-burner-x86_64-pc-windows-gnu SubtitleBurner_windows_x86_64.exe
+          mv subtitle-burner-x86_64-unknown-linux-gnu SubtitleBurner_linux_x86_64
+
+      - name: Generate macOS DMG (optional - requires additional setup)
+        continue-on-error: true
+        run: |
+          # Create a simple DMG using hdiutil
+          cd artifacts
+          hdiutil create -volname SubtitleBurner -srcfolder SubtitleBurner_macos_arm64 -ov -format UDZO SubtitleBurner_macos_arm64.dmg || true
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
+          files: |
+            artifacts/SubtitleBurner_macos_*
+            artifacts/SubtitleBurner_windows_*
+            artifacts/SubtitleBurner_linux_*
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =============================================================================
+  # Optional: Build verification (runs on all triggers, not just releases)
+  # =============================================================================
+  verify:
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    # Only run verification on main and release/* branches, not on every tag push
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
+    steps:
+      - name: Verify all builds succeeded
+        run: |
+          echo "All platform builds completed successfully"
+          echo "Platforms: macOS (arm64, x86_64), Windows (x86_64), Linux (x86_64)"

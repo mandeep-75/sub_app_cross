@@ -4,6 +4,22 @@
 
 This is a Tauri v2 desktop application with a React + Vite frontend and Rust backend. The app is a video subtitle editor with styling and export capabilities.
 
+## Project Details
+
+- **Name:** SubtitleBurner
+- **Version:** 0.1.0
+- **Framework:** Tauri v2 + React 18 + Vite 6
+- **Language:** TypeScript/JavaScript (frontend), Rust (backend)
+- **Platforms:** macOS, Windows, Linux
+
+## Key Features
+
+- Video playback with subtitle overlay
+- Subtitle editing (add, edit, delete, import/export SRT)
+- Subtitle styling (font, size, color, position, background)
+- Export video with burned-in subtitles (ASS format)
+- Whisper transcription support
+
 ## Build Commands
 
 **Do NOT run dev commands** (`npm run dev`, `npm run tauri dev`, `cargo run`) - these start blocking development servers. Use build/check commands to verify code instead.
@@ -27,6 +43,36 @@ cargo check          # Check code without building
 cargo build          # Build debug binary
 cargo build --release # Build optimized binary
 cargo test           # Run all tests
+```
+
+### Building for Different Platforms
+
+#### macOS App (native)
+```bash
+npm run tauri build -- --bundles app
+# Output: src-tauri/target/release/bundle/macos/SubtitleBurner.app
+```
+
+#### macOS DMG
+```bash
+npm run tauri build -- --bundles dmg
+# Output: src-tauri/target/release/bundle/macos/SubtitleBurner_x.x.x_aarch64.dmg
+```
+
+#### Windows EXE (cross-compile from macOS)
+Prerequisites: Install mingw-w64
+```bash
+brew install mingw-w64
+rustup target add x86_64-pc-windows-gnu
+cargo xwin build --release --target x86_64-pc-windows-gnu
+# Output: src-tauri/target/x86_64-pc-windows-gnu/release/subtitle-burner.exe
+```
+
+#### Linux AppImage (cross-compile)
+```bash
+cargo install cargo-appimage
+cargo appimage build --release
+# Output: src-tauri/target/release/appimage/subtitle-burner
 ```
 
 ### Running a Single Test
@@ -96,6 +142,7 @@ import './index.css'
 src/
 ├── components/      # React components (Header, Toolbar, VideoPanel, etc.)
 ├── hooks/          # Custom hooks (useVideo, useSubtitles, useStyling)
+├── utils/          # Utility functions (assPreviewLayout.js)
 ├── App.jsx          # Main app component
 ├── main.jsx         # Entry point
 └── index.css        # Global styles
@@ -115,7 +162,7 @@ src-tauri/
 
 **Frontend:** React 18, @tauri-apps/api (v2), @tauri-apps/plugin-*, Vite 6
 
-**Backend:** Tauri 2, tokio, serde + serde_json, log + env_logger
+**Backend:** Tauri 2, tokio, serde + serde_json, log + env_logger, whisper-rs
 
 ## Common Tasks
 
