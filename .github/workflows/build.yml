@@ -34,31 +34,6 @@ jobs:
           name: subtitle-burner-${{ matrix.target }}
           path: src-tauri/target/${{ matrix.target }}/release/subtitle-burner
 
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libclang-dev libssl-dev pkg-config libglib2.0-dev libgtk-3-dev libsoup-3.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly libayatana-appindicator3-dev
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-unknown-linux-gnu
-
-      - name: Build
-        working-directory: src-tauri
-        run: cargo build --release --target x86_64-unknown-linux-gnu
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: subtitle-burner-x86_64-unknown-linux-gnu
-          path: src-tauri/target/x86_64-unknown-linux-gnu/release/subtitle-burner
-
   build-windows:
     runs-on: macos-latest
     steps:
@@ -83,7 +58,7 @@ jobs:
           path: src-tauri/target/x86_64-pc-windows-gnu/release/subtitle-burner.exe
 
   release:
-    needs: [build-macos, build-linux, build-windows]
+    needs: [build-macos, build-windows]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
