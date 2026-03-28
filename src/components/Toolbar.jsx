@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 function Toolbar({ 
   onImportVideo, 
   onImportSubtitle, 
@@ -7,18 +5,18 @@ function Toolbar({
   onExport,
   whisperModel,
   onWhisperModelChange,
+  maxWordsPerLine,
+  onMaxWordsPerLineChange,
   hasVideo,
   hasSubtitles,
   transcribing
 }) {
-  const [showSettings, setShowSettings] = useState(false)
-
   const models = [
-    { value: 'tiny', label: 'Tiny (fastest)' },
+    { value: 'tiny', label: 'Tiny' },
     { value: 'base', label: 'Base' },
     { value: 'small', label: 'Small' },
     { value: 'medium', label: 'Medium' },
-    { value: 'large', label: 'Large (most accurate)' }
+    { value: 'large', label: 'Large' }
   ]
 
   return (
@@ -55,6 +53,7 @@ function Toolbar({
           className="btn btn-primary" 
           onClick={onTranscribe}
           disabled={!hasVideo || transcribing}
+          style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -68,9 +67,10 @@ function Toolbar({
         <select
           value={whisperModel}
           onChange={(e) => onWhisperModelChange(e.target.value)}
+          disabled={transcribing}
           style={{
             padding: '6px 8px',
-            borderRadius: '0 4px 4px 0',
+            borderRadius: 0,
             border: '1px solid var(--color-accent-primary)',
             borderLeft: 'none',
             background: 'var(--color-bg-secondary)',
@@ -82,6 +82,38 @@ function Toolbar({
             <option key={m.value} value={m.value}>{m.label}</option>
           ))}
         </select>
+
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          padding: '0 8px',
+          borderLeft: '1px solid var(--color-border)',
+          marginLeft: 4
+        }}>
+          <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginRight: 6 }}>
+            Words:
+          </span>
+          <select
+            value={maxWordsPerLine}
+            onChange={(e) => onMaxWordsPerLineChange(Number(e.target.value))}
+            disabled={transcribing}
+            style={{
+              padding: '4px 6px',
+              borderRadius: '0 4px 4px 0',
+              border: '1px solid var(--color-accent-primary)',
+              borderLeft: 'none',
+              background: 'var(--color-bg-secondary)',
+              color: 'var(--color-text)',
+              fontSize: 12,
+              borderTopRightRadius: 0,
+              borderBottomRightRadius: 0
+            }}
+          >
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div style={{ flex: 1 }} />

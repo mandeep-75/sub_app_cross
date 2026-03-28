@@ -15,6 +15,7 @@ function App() {
   const [showExport, setShowExport] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
   const [whisperModel, setWhisperModel] = useState('tiny')
+  const [maxWordsPerLine, setMaxWordsPerLine] = useState(5)
 
   const {
     subtitles,
@@ -82,7 +83,7 @@ function App() {
         videoPath: videoInfo.path,
         settings: { 
           whisperModel,
-          maxWordsPerLine: 1,
+          maxWordsPerLine,
           autoRomanize: false,
           romanizationScheme: 'iast'
         }
@@ -93,7 +94,7 @@ function App() {
     } finally {
       setTranscribing(false)
     }
-  }, [videoInfo, whisperModel, setSubtitles, transcribing])
+  }, [videoInfo, whisperModel, maxWordsPerLine, setSubtitles, transcribing])
 
   const handleExport = useCallback(async () => {
     if (!videoInfo?.path || subtitles.length === 0) return
@@ -115,6 +116,8 @@ function App() {
         onExport={handleExport}
         whisperModel={whisperModel}
         onWhisperModelChange={setWhisperModel}
+        maxWordsPerLine={maxWordsPerLine}
+        onMaxWordsPerLineChange={setMaxWordsPerLine}
         hasVideo={!!videoInfo?.path}
         hasSubtitles={subtitles.length > 0}
         transcribing={transcribing}
