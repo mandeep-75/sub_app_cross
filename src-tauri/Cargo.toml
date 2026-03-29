@@ -1,5 +1,5 @@
 [package]
-name = "subtitle-burner"
+name = "subtitleburner"
 version = "0.1.0"
 description = "Video subtitle editor with Whisper transcription"
 authors = ["SubtitleBurner"]
